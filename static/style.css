@@ -1,0 +1,580 @@
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --border: #2d3147;
+  --text: #e2e8f0;
+  --muted: #6b7280;
+  --accent: #6366f1;
+  --low: #22c55e;
+  --medium: #f59e0b;
+  --high: #ef4444;
+  --critical: #a855f7;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 { font-size: 1rem; color: var(--muted); margin-bottom: 0.25rem; }
+header h2 { font-size: 1.4rem; }
+header .subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
+
+main { padding: 1.5rem 2rem; max-width: 1200px; }
+
+footer {
+  padding: 1rem 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.card h3 { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.card h4 { margin-bottom: 0.5rem; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1.5fr; gap: 1rem; }
+
+.event-table { width: 100%; border-collapse: collapse; }
+.event-table th { text-align: left; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+.event-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+.event-table tr:last-child td { border-bottom: none; }
+.event-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; color: var(--accent); }
+
+.btn {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+.btn:hover { background: var(--accent); text-decoration: none; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.85em; }
+
+dl { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1rem; margin-bottom: 1rem; }
+dt { color: var(--muted); font-size: 0.85em; }
+dd { }
+
+.inline-dl { grid-template-columns: 160px 1fr; }
+
+/* Trend indicators */
+.trend-improving { color: var(--low); }
+.trend-worsening { color: var(--high); }
+.trend-stable { color: var(--muted); }
+
+/* Category colors */
+.cat-low { color: var(--low); }
+.cat-medium { color: var(--medium); }
+.cat-high { color: var(--high); }
+.cat-critical { color: var(--critical); }
+
+.cat-bg-low { border-left: 3px solid var(--low); }
+.cat-bg-medium { border-left: 3px solid var(--medium); }
+.cat-bg-high { border-left: 3px solid var(--high); }
+.cat-bg-critical { border-left: 3px solid var(--critical); }
+
+/* Agent reasoning log */
+.step-row {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.step-row:last-child { border-bottom: none; }
+
+.tool-label {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+.tool-detail { color: var(--text); margin-left: 0.5rem; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+.badge-loading { background: var(--border); color: var(--muted); }
+.badge-done { background: rgba(34,197,94,0.15); color: var(--low); }
+.badge-rejected { background: rgba(107,114,128,0.15); color: var(--muted); }
+.badge-error { background: rgba(239,68,68,0.15); color: var(--high); }
+
+/* Score card */
+.score-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+.score-num { font-size: 1.5rem; font-weight: 700; }
+.score-cat { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
+.score-rec { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+
+/* Rejection + error cards */
+.rejection { border-left: 3px solid var(--muted); }
+.error { border-left: 3px solid var(--high); }
+
+/* Empty state */
+.empty-state { padding: 3rem; text-align: center; color: var(--muted); }
+
+/* ── Dashcam frame ──────────────────────────────────────────────────────── */
+.dashcam-frame {
+  background: #04040a;
+  border: 1.5px solid #2d3147;
+  border-radius: 8px;
+  aspect-ratio: 16 / 6;
+  max-height: 220px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+/* Subtle scanline texture */
+.dashcam-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.08) 3px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+.dashcam-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.6) 0%,
+    transparent 30%,
+    transparent 55%,
+    rgba(0,0,0,0.7) 100%
+  );
+  z-index: 1;
+}
+
+/* Top row: REC · event label · signal bars */
+.dashcam-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashcam-rec {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #ff3333;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.rec-dot {
+  width: 7px;
+  height: 7px;
+  background: #ff3333;
+  border-radius: 50%;
+  animation: rec-blink 1.2s step-start infinite;
+  flex-shrink: 0;
+}
+
+@keyframes rec-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.dashcam-event-label {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(255, 210, 60, 0.9);
+  background: rgba(0,0,0,0.55);
+  padding: 2px 7px;
+  border-radius: 3px;
+  flex: 1;
+}
+
+/* Signal bars (camera confidence) */
+.dashcam-signal {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.signal-bar {
+  width: 3px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 1px;
+  transition: background 0.3s;
+}
+.signal-bar:nth-child(1) { height: 5px; }
+.signal-bar:nth-child(2) { height: 8px; }
+.signal-bar:nth-child(3) { height: 11px; }
+.signal-bar:nth-child(4) { height: 14px; }
+.signal-bar.active       { background: #22c55e; }
+
+.dashcam-conf-pct {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.5);
+  margin-left: 4px;
+  align-self: center;
+}
+
+/* Center watermark */
+.dashcam-center-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #151928;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Bottom row: speed · GPS + timestamp + G-bar */
+.dashcam-bottom {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.dashcam-speed-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  min-width: 52px;
+}
+
+.dashcam-speed-val {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 38px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -1px;
+  transition: color 0.3s;
+}
+
+.dashcam-speed-unit {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+
+.dashcam-bottom-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+}
+
+.dashcam-gps {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+}
+
+.dashcam-lat, .dashcam-lon {
+  color: rgba(255,255,255,0.65);
+}
+
+.dashcam-ts {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+}
+
+/* G-force bar */
+.dashcam-g-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.dashcam-g-label {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.4);
+}
+
+.dashcam-g-track {
+  width: 80px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dashcam-g-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: #22c55e;
+  transition: width 0.5s ease, background 0.4s ease;
+}
+
+.dashcam-g-val {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  min-width: 42px;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .two-col { grid-template-columns: 1fr; }
+  .dashcam-frame { aspect-ratio: 16 / 7; max-height: 170px; }
+  .dashcam-speed-val { font-size: 28px; }
+  .dashcam-g-track { width: 50px; }
+}
+
+/* ── Stats banner ────────────────────────────────────────────────────────── */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+}
+
+.stat-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0 0.75rem;
+}
+
+.stat-chip:first-child { padding-left: 0; }
+
+.stat-num {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stat-note {
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: rgba(99,102,241,0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.stat-chip-muted .stat-num { color: var(--muted); font-size: 1rem; }
+
+.stat-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Event type severity badges ──────────────────────────────────────────── */
+.ev-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.ev-harsh-braking    { background: rgba(239,68,68,0.12);  color: #ef4444; }
+.ev-speeding         { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.ev-phone-distraction{ background: rgba(168,85,247,0.12); color: #a855f7; }
+.ev-following-close  { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.ev-drowsy-driving   { background: rgba(168,85,247,0.12); color: #a855f7; }
+.ev-shadow-trigger   { background: rgba(107,114,128,0.12);color: #6b7280; }
+.ev-ambiguous        { background: rgba(107,114,128,0.12);color: #6b7280; }
+/* Fallback for unknown types */
+.ev-badge:not([class*="ev-"]) { background: rgba(99,102,241,0.12); color: var(--accent); }
+
+/* ── Gate decision badges ────────────────────────────────────────────────── */
+.gate-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gate-reject { background: rgba(107,114,128,0.15); color: var(--muted); }
+.gate-pass   { background: rgba(34,197,94,0.12);   color: var(--low);   }
+
+/* ── Table row states ────────────────────────────────────────────────────── */
+.event-row { cursor: pointer; }
+.event-row.row-focused td { background: rgba(99,102,241,0.07); }
+.event-row.row-rejected   { opacity: 0.65; }
+.event-row.row-rejected:hover td { background: rgba(255,255,255,0.015); }
+
+/* ── Step timing ─────────────────────────────────────────────────────────── */
+.step-row { position: relative; }
+.step-time {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* ── Copy button ─────────────────────────────────────────────────────────── */
+.copy-btn {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.35rem 0.9rem;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.copy-btn:hover { background: var(--accent); color: #fff; text-decoration: none; }
+
+/* ── Gate rules checklist ────────────────────────────────────────────────── */
+.gate-rules {
+  list-style: none;
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gate-rules li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.rule-icon { font-size: 0.8rem; flex-shrink: 0; min-width: 14px; }
+.rule-name { font-weight: 500; color: var(--text); min-width: 140px; }
+.rule-detail { color: var(--muted); font-size: 0.78rem; }
+
+.rule-pass .rule-icon { color: var(--low); }
+.rule-fail .rule-icon { color: var(--high); }
+.rule-fail .rule-name { color: var(--high); }
+
+/* ── Result elapsed time ─────────────────────────────────────────────────── */
+.result-elapsed {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  opacity: 0.7;
+}
+
+/* ── Prev/next event navigation ──────────────────────────────────────────── */
+.event-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.event-nav a {
+  color: var(--accent);
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: background 0.12s;
+}
+.event-nav a:hover { background: rgba(99,102,241,0.1); text-decoration: none; }
+
+.event-nav .ev-counter {
+  margin: 0 auto;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+.event-nav .kbd-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.6;
+}

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ event.event_id }} — Samsara Demo</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="/">← Queue</a></h1>
+    <h2>{{ event.event_type.replace("_", " ").title() }}</h2>
+    <p class="subtitle">{{ event.location }} · {{ event.timestamp[:16].replace("T", " ") }}</p>
+  </header>
+
+  <main>
+    <!-- Dashcam frame — telemetry animated via JS -->
+    <div class="dashcam-frame">
+      <div class="dashcam-overlay">
+
+        <div class="dashcam-top">
+          <span class="dashcam-rec"><span class="rec-dot"></span> REC</span>
+          <span class="dashcam-event-label">{{ event.event_type.replace("_", " ").upper() }}</span>
+          <div class="dashcam-signal">
+            <span class="signal-bar"></span>
+            <span class="signal-bar"></span>
+            <span class="signal-bar"></span>
+            <span class="signal-bar"></span>
+            <span class="dashcam-conf-pct">{{ "%.0f"|format(event.camera_confidence * 100) }}%</span>
+          </div>
+        </div>
+
+        <div class="dashcam-center-label">◉ DASHCAM FOOTAGE</div>
+
+        <div class="dashcam-bottom">
+          <div class="dashcam-speed-block">
+            <span class="dashcam-speed-val">{{ event.speed_mph | int }}</span>
+            <small class="dashcam-speed-unit">MPH</small>
+          </div>
+          <div class="dashcam-bottom-right">
+            <div class="dashcam-gps">GPS <span class="dashcam-lat">—</span> · <span class="dashcam-lon">—</span></div>
+            <div class="dashcam-ts">{{ event.timestamp[:19].replace("T", " ") }} UTC</div>
+            {% if event.deceleration_g %}
+            <div class="dashcam-g-row">
+              <span class="dashcam-g-label">DECEL</span>
+              <div class="dashcam-g-track"><div class="dashcam-g-bar"></div></div>
+              <span class="dashcam-g-val">{{ "%.2f"|format(event.deceleration_g) }}G</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Prev/next navigation -->
+    <div class="event-nav">
+      {% if prev_event_id %}
+      <a href="/event/{{ prev_event_id }}" class="btn event-nav-btn">← prev</a>
+      {% else %}
+      <span class="btn event-nav-btn disabled">← prev</span>
+      {% endif %}
+      <span class="muted small">{{ event_index }} / {{ event_total }}</span>
+      {% if next_event_id %}
+      <a href="/event/{{ next_event_id }}" class="btn event-nav-btn">next →</a>
+      {% else %}
+      <span class="btn event-nav-btn disabled">next →</span>
+      {% endif %}
+    </div>
+
+    <div class="two-col">
+      <!-- Left: event metadata -->
+      <section class="card">
+        <h3>Event Details</h3>
+        <dl>
+          <dt>Event ID</dt><dd><code>{{ event.event_id }}</code></dd>
+          <dt>Speed</dt><dd>{{ event.speed_mph }} mph (limit {{ event.speed_limit_mph }} mph)</dd>
+          {% if event.deceleration_g %}<dt>Deceleration</dt><dd>{{ "%.2f"|format(event.deceleration_g) }}G</dd>{% endif %}
+          <dt>Camera confidence</dt><dd>{{ "%.0f"|format(event.camera_confidence * 100) }}%</dd>
+          <dt>Notes</dt><dd class="muted small">{{ event.notes }}</dd>
+        </dl>
+        {% if driver %}
+        <h3>Driver</h3>
+        <dl>
+          <dt>Name</dt><dd><a href="/driver/{{ driver.driver_id }}">{{ driver.name }}</a></dd>
+          <dt>Trend</dt><dd class="trend-{{ driver.trend.lower() }}">{{ driver.trend }}</dd>
+        </dl>
+        {% endif %}
+      </section>
+
+      <!-- Right: agent reasoning log -->
+      <section class="card" id="reasoning-panel">
+        <h3>Agent Reasoning <span id="status-badge" class="badge badge-loading">Loading…</span></h3>
+
+        <!-- Loading state -->
+        <div id="loading-state">
+          <p class="muted">Analyzing event…</p>
+        </div>
+
+        <!-- Streaming log (hidden until first step arrives) -->
+        <div id="step-log" style="display:none"></div>
+
+        <!-- Rejection state -->
+        <div id="rejection-card" class="card rejection" style="display:none">
+          <h4>Event Rejected</h4>
+          <p id="rejection-reason" class="muted"></p>
+        </div>
+
+        <!-- Result card (hidden until done) -->
+        <div id="result-card" style="display:none">
+          <div id="score-section"></div>
+          <div id="coaching-section"></div>
+          <div id="self-review-section"></div>
+        </div>
+
+        <!-- Error state -->
+        <div id="error-card" class="card error" style="display:none">
+          <h4>Analysis failed</h4>
+          <p id="error-message" class="muted"></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const DEMO_TOKEN  = "samsara-demo-2026";
+    const EVENT_ID    = "{{ event.event_id }}";
+    const PREV_EVENT  = "{{ prev_event_id or '' }}";
+    const NEXT_EVENT  = "{{ next_event_id or '' }}";
+
+    function el(id) { return document.getElementById(id); }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let stepCount  = 0;
+    let lastStepMs = performance.now();
+
+    // ── Step rendering ────────────────────────────────────────────────────────
+    function appendStep(step) {
+      const log = el("step-log");
+      log.style.display = "block";
+      el("loading-state").style.display = "none";
+
+      const now     = performance.now();
+      const elapsed = ((now - lastStepMs) / 1000).toFixed(1) + "s";
+      lastStepMs    = now;
+      stepCount++;
+
+      el("status-badge").textContent = `Step ${stepCount}`;
+      el("status-badge").className   = "badge badge-loading";
+
+      const row = document.createElement("div");
+      row.className = "step-row";
+
+      const label = step.tool.replace(/_/g, " ");
+      let   detail = "";
+
+      if (step.tool === "score_risk") {
+        const inp = step.input, cat = inp.category || "";
+        detail = `Score: <strong>${inp.score}/10</strong> — <span class="cat-${cat.toLowerCase()}">${cat}</span> · ${inp.recommendation}`;
+      } else if (step.tool === "generate_coaching_script") {
+        detail = `tone=${step.input.tone} · type=${step.input.coaching_type}`;
+      } else if (step.tool === "create_self_review_prompt") {
+        detail = `${(step.input.questions || []).length} reflection questions`;
+      } else {
+        detail = Object.keys(step.result || {}).slice(0, 3).join(", ") || "ok";
+      }
+
+      row.innerHTML = `<span class="tool-label">[${label}]</span> <span class="tool-detail">${detail}</span><span class="step-time">${elapsed}</span>`;
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // ── Rejection card ────────────────────────────────────────────────────────
+    function showRejection(item) {
+      el("loading-state").style.display = "none";
+      el("rejection-card").style.display = "block";
+      el("rejection-reason").textContent = item.reason;
+      el("status-badge").textContent     = "Rejected";
+      el("status-badge").className       = "badge badge-rejected";
+    }
+
+    function showGateRules(rules) {
+      if (!rules || !rules.length) return;
+      const card = el("rejection-card");
+      if (card.querySelector(".gate-rules")) return;
+      const ul = document.createElement("ul");
+      ul.className = "gate-rules";
+      rules.forEach(r => {
+        const li = document.createElement("li");
+        li.className = r.passed ? "rule-pass" : "rule-fail";
+        li.innerHTML = `<span class="rule-icon">${r.passed ? "✓" : "✗"}</span>
+                        <span class="rule-name">${r.name}</span>
+                        <span class="rule-detail">${r.value_display}</span>`;
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+    }
+
+    // ── Result card ───────────────────────────────────────────────────────────
+    function showResult(item) {
+      el("status-badge").textContent  = "Complete";
+      el("status-badge").className    = "badge badge-done";
+      el("result-card").style.display = "block";
+
+      if (item.elapsed_ms) {
+        const meta = document.createElement("p");
+        meta.className   = "muted small result-elapsed";
+        meta.textContent = `${(item.elapsed_ms / 1000).toFixed(1)}s · ${stepCount} tool calls`;
+        el("result-card").insertBefore(meta, el("result-card").firstChild);
+      }
+
+      if (item.risk_score) {
+        const rs = item.risk_score, cat = (rs.category || "").toLowerCase();
+        el("score-section").innerHTML = `
+          <div class="score-card cat-bg-${cat}">
+            <span class="score-num">${rs.score}/10</span>
+            <span class="score-cat">${rs.category}</span>
+            <span class="score-rec">${rs.recommendation}</span>
+          </div>
+          <p class="muted small">${rs.reasoning}</p>`;
+      }
+
+      let copyText = "";
+
+      if (item.coaching_script) {
+        const cs = item.coaching_script;
+        el("coaching-section").innerHTML = `
+          <h4>Coaching Script <span class="muted small">(${cs.tone})</span></h4>
+          <p><em>${cs.opening}</em></p>
+          <p class="muted small">${cs.body}</p>
+          <p><strong>Follow-up:</strong> ${cs.follow_up_action}</p>`;
+        copyText = `${cs.opening}\n\n${cs.body}\n\nFollow-up: ${cs.follow_up_action}`;
+      }
+
+      if (item.self_review_prompt) {
+        const srp = item.self_review_prompt;
+        el("self-review-section").innerHTML = `
+          <h4>Self-Review for ${srp.driver_name}</h4>
+          <ol>${(srp.questions || []).map(q => `<li>${q}</li>`).join("")}</ol>
+          <p class="muted small">Video: ${srp.video_clip_prompt}</p>`;
+        copyText = (srp.questions || []).map((q, i) => `${i + 1}. ${q}`).join("\n");
+      }
+
+      if (copyText) {
+        const btn    = document.createElement("button");
+        btn.className = "btn copy-btn";
+        btn.textContent = "Copy Script";
+        btn.onclick = () => {
+          navigator.clipboard.writeText(copyText)
+            .then(() => { btn.textContent = "Copied ✓"; setTimeout(() => btn.textContent = "Copy Script", 2200); })
+            .catch(() => { btn.textContent = "Copy failed"; });
+        };
+        el("result-card").appendChild(btn);
+      }
+    }
+
+    // ── Error card ────────────────────────────────────────────────────────────
+    function showError(msg) {
+      el("loading-state").style.display = "none";
+      el("error-card").style.display    = "block";
+      el("error-message").textContent   = msg;
+      el("status-badge").textContent    = "Error";
+      el("status-badge").className      = "badge badge-error";
+    }
+
+    // ── SSE stream ────────────────────────────────────────────────────────────
+    fetch("/api/triage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Demo-Token": DEMO_TOKEN },
+      body: JSON.stringify({ event_id: EVENT_ID }),
+    }).then(response => {
+      if (!response.ok) {
+        return response.json().then(e => { showError(e.detail || "Request failed"); });
+      }
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = "";
+
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) return;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop();
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6);
+            if (raw.includes('"type":"done"') || raw.includes('"type": "done"')) continue;
+            try {
+              const item = JSON.parse(raw);
+              if      (item.type === "step")     appendStep(item);
+              else if (item.type === "rejected") showRejection(item);
+              else if (item.type === "error")    showError(item.message);
+              else if (item.event_id) {
+                if (item.gate_result && item.gate_result.decision === "REJECT") {
+                  showGateRules(item.gate_result.rules);
+                  return;
+                }
+                showResult(item);
+              }
+            } catch (_) {}
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(err => showError(err.message));
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────────
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" || e.key === "g")     window.location.href = "/";
+      if (e.key === "ArrowLeft"  && PREV_EVENT)    window.location.href = `/event/${PREV_EVENT}`;
+      if (e.key === "ArrowRight" && NEXT_EVENT)    window.location.href = `/event/${NEXT_EVENT}`;
+    });
+
+    window.addEventListener("beforeunload", () => {});
+
+    // ── Dashcam animation ────────────────────────────────────────────────────
+    (function () {
+      var BASE_SPEED = {{ event.speed_mph }};
+      var BASE_G     = {% if event.deceleration_g %}{{ event.deceleration_g }}{% else %}0{% endif %};
+      var CAM_CONF   = {{ event.camera_confidence }};
+      var EVENT_TS   = "{{ event.timestamp }}";
+      var LOC_STR    = "{{ event.location | replace('"', '\\"') }}";
+
+      // Seed GPS from location string so each event gets consistent coords
+      var seed = 0;
+      for (var k = 0; k < LOC_STR.length; k++) {
+        seed = ((seed * 31) + LOC_STR.charCodeAt(k)) & 0x7fffffff;
+      }
+      var baseLat  =  40.0 + (seed % 8000)  / 10000;   // 40.0–40.8° N
+      var baseLon  =  71.0 + (seed % 5000)  / 10000;   // 71.0–71.5° W
+      var driftLat = 0, driftLon = 0;
+
+      // Camera signal bars (0–4 lit based on confidence)
+      var bars  = document.querySelectorAll(".signal-bar");
+      var level = Math.round(CAM_CONF * 4);
+      bars.forEach(function (b, i) { if (i < level) b.classList.add("active"); });
+
+      // G-force bar initial render
+      var gBar = document.querySelector(".dashcam-g-bar");
+      function renderG(g) {
+        if (!gBar || BASE_G === 0) return;
+        var pct = Math.min(100, (g / 1.2) * 100);
+        gBar.style.width = pct + "%";
+        gBar.style.background = g > 0.9 ? "#ef4444" : g > 0.6 ? "#f59e0b" : "#22c55e";
+      }
+      renderG(BASE_G);
+
+      // GPS init — show immediately, then drift
+      var latEl = document.querySelector(".dashcam-lat");
+      var lonEl = document.querySelector(".dashcam-lon");
+      function renderGPS() {
+        if (latEl) latEl.textContent = (baseLat + driftLat).toFixed(4) + "° N";
+        if (lonEl) lonEl.textContent = (baseLon + driftLon).toFixed(4) + "° W";
+      }
+      renderGPS();
+
+      // Parse event timestamp for ticking clock
+      var eventMs  = new Date(EVENT_TS).getTime() || Date.now();
+      var startMs  = Date.now();
+
+      // Speed + G + GPS — update every 700 ms
+      var speedEl = document.querySelector(".dashcam-speed-val");
+      var gValEl  = document.querySelector(".dashcam-g-val");
+      function rnd(r) { return (Math.random() - 0.5) * 2 * r; }
+
+      setInterval(function () {
+        // Speed jitter
+        if (speedEl) {
+          var s = Math.max(0, BASE_SPEED + rnd(1.5));
+          speedEl.textContent = Math.round(s);
+        }
+        // G-force jitter
+        if (BASE_G > 0) {
+          var g = Math.max(0, BASE_G + rnd(0.03));
+          if (gValEl) gValEl.textContent = g.toFixed(2) + "G";
+          renderG(g);
+        }
+        // GPS drift (tiny random walk, clamped ±0.001°)
+        driftLat = Math.max(-0.001, Math.min(0.001, driftLat + rnd(0.00003)));
+        driftLon = Math.max(-0.001, Math.min(0.001, driftLon + rnd(0.00003)));
+        renderGPS();
+      }, 700);
+
+      // Ticking timestamp — every second
+      var tsEl = document.querySelector(".dashcam-ts");
+      setInterval(function () {
+        var elapsed = Math.floor((Date.now() - startMs) / 1000);
+        var t = new Date(eventMs + elapsed * 1000);
+        if (tsEl) {
+          var pad = function (n) { return String(n).padStart(2, "0"); };
+          tsEl.textContent =
+            t.getUTCFullYear() + "-" + pad(t.getUTCMonth() + 1) + "-" + pad(t.getUTCDate()) +
+            " " + pad(t.getUTCHours()) + ":" + pad(t.getUTCMinutes()) + ":" + pad(t.getUTCSeconds()) +
+            " UTC";
+        }
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>

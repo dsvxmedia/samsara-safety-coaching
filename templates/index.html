@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safety Event Queue — Samsara Demo</title>
+  <meta name="description" content="AI Safety Coaching Automator — autonomous triage agent for fleet dash cam events">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Safety Event Queue</h1>
+    <p class="subtitle">AI Safety Coaching Automator — Samsara Demo · <code>python demo.py --all</code></p>
+  </header>
+
+  <main>
+    <!-- Stats banner -->
+    <div class="stats-bar">
+      <div class="stat-chip">
+        <span class="stat-num">{{ stats.total }}</span>
+        <span class="stat-label">events</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-chip">
+        <span class="stat-num">{{ stats.triaged }}</span>
+        <span class="stat-label">auto-triaged by agent</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-chip stat-chip-muted">
+        <span class="stat-num">{{ stats.rejected }}</span>
+        <span class="stat-label">rejected by confidence gate <span class="stat-note">&lt; 0.1s, no LLM</span></span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-chip stat-chip-muted">
+        <span class="stat-num">~$0.017</span>
+        <span class="stat-label">per coaching session</span>
+      </div>
+    </div>
+
+    {% if events %}
+    <table class="event-table" id="event-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Event ID</th>
+          <th>Type</th>
+          <th>Driver</th>
+          <th>Location</th>
+          <th>Timestamp</th>
+          <th>Gate</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr class="event-row {% if e.gate_decision == 'REJECT' %}row-rejected{% endif %}"
+            data-href="/event/{{ e.event_id }}">
+          <td class="muted small">{{ loop.index }}</td>
+          <td><code>{{ e.event_id }}</code></td>
+          <td>
+            <span class="ev-badge ev-{{ e.event_type.replace('_', '-') }}">
+              {{ e.event_type.replace("_", " ").title() }}
+            </span>
+          </td>
+          <td>
+            {% if e.driver_id %}
+            <a href="/driver/{{ e.driver_id }}">{{ e.driver_name }}</a>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted small">{{ e.location }}</td>
+          <td class="muted small">{{ e.timestamp[:16].replace("T", " ") }}</td>
+          <td>
+            {% if e.gate_decision == "REJECT" %}
+            <span class="gate-badge gate-reject">REJECTED</span>
+            {% else %}
+            <span class="gate-badge gate-pass">PASS</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/event/{{ e.event_id }}" class="btn">Analyze →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <p>No events pending. All clear.</p>
+    </div>
+    {% endif %}
+  </main>
+
+  <footer>
+    <p>
+      CLI: <code>python demo.py --all</code> ·
+      <a href="/health">health</a> ·
+      <a href="/api/stats">stats JSON</a> ·
+      <span class="muted">J/K to navigate · Enter to open</span>
+    </p>
+  </footer>
+
+  <script>
+    // Keyboard navigation: J/K to move through rows, Enter to open
+    const rows = Array.from(document.querySelectorAll(".event-row"));
+    let cursor = -1;
+
+    function setCursor(idx) {
+      if (cursor >= 0 && rows[cursor]) rows[cursor].classList.remove("row-focused");
+      cursor = Math.max(0, Math.min(rows.length - 1, idx));
+      if (rows[cursor]) {
+        rows[cursor].classList.add("row-focused");
+        rows[cursor].scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.target.tagName === "INPUT") return;
+      if (e.key === "j" || e.key === "ArrowDown")  { e.preventDefault(); setCursor(cursor < 0 ? 0 : cursor + 1); }
+      if (e.key === "k" || e.key === "ArrowUp")    { e.preventDefault(); setCursor(cursor < 0 ? rows.length - 1 : cursor - 1); }
+      if (e.key === "Enter" && cursor >= 0) {
+        const href = rows[cursor].dataset.href;
+        if (href) window.location.href = href;
+      }
+    });
+
+    // Click row to navigate (whole row is clickable)
+    rows.forEach((row, i) => {
+      row.addEventListener("click", e => {
+        if (e.target.tagName === "A") return; // let link clicks through normally
+        const href = row.dataset.href;
+        if (href) window.location.href = href;
+      });
+      row.style.cursor = "pointer";
+    });
+  </script>
+</body>
+</html>

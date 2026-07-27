@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ driver.name }} — Samsara Demo</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="/">← Queue</a></h1>
+    <h2>{{ driver.name }}</h2>
+    <p class="subtitle">
+      {{ driver.vehicle_class }} · Hired {{ driver.hire_date }} ·
+      Trend: <span class="trend-{{ driver.trend.lower() }}">{{ driver.trend }}</span>
+    </p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h3>90-Day Summary</h3>
+      <dl class="inline-dl">
+        <dt>Events (90 days)</dt><dd>{{ driver.events_90d }}</dd>
+        <dt>Events (30 days)</dt><dd>{{ driver.events_30d }}</dd>
+        <dt>Coaching sessions</dt><dd>{{ driver.coaching_sessions }}</dd>
+        <dt>Last coaching</dt><dd>{{ driver.last_coaching_date or "Never" }}</dd>
+      </dl>
+      <p class="muted small">{{ driver.notes }}</p>
+    </section>
+
+    <section class="card">
+      <h3>Events on Record</h3>
+      {% if events %}
+      <table class="event-table">
+        <thead>
+          <tr>
+            <th>Event ID</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Speed</th>
+            <th>Timestamp</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in events %}
+          <tr>
+            <td><code>{{ e.event_id }}</code></td>
+            <td>{{ e.event_type.replace("_", " ").title() }}</td>
+            <td class="muted small">{{ e.location }}</td>
+            <td>{{ e.speed_mph }} mph</td>
+            <td class="muted small">{{ e.timestamp[:16].replace("T", " ") }}</td>
+            <td><a href="/event/{{ e.event_id }}" class="btn">View →</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No events in the last 90 days.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
